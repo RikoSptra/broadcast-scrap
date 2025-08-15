@@ -14,13 +14,15 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/broadcast', require('./routes/broadcastRoutes'));
+app.use("/api/googleMapsScrapper", require('./routes/googleMapsScrapperRoutes'));
+app.use("/api/category", require('./routes/categoryRoutes'));
 
 // Basic route
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to WA Broadcast API' });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4333;
 
 // Connect to database and start server
 const startServer = async () => {

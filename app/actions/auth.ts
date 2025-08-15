@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import axios from "axios";
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "http://localhost:4333/api",
 });
 interface LoginResponse {
   success: boolean;
