@@ -58,18 +58,35 @@ exports.getAllGoogleScrapData = async (req, res) => {
 
     // Build search query if search parameter exists
     const searchQuery = req.query.search;
-    const searchFilter = searchQuery ? {
+    const category = req.query.category
+    let searchFilter = searchQuery ? {
       $or: [
         { title: { $regex: searchQuery, $options: 'i' } },
-        { phone: { $regex: searchQuery, $options: 'i' } }
+        { phone: { $regex: searchQuery, $options: 'i' } },
       ]
     } : {};
 
     // Combine search filter with deleted filter
-    const filter = {
+    let filter = {
       _deleted: { $exists: false },
       ...searchFilter
     };
+
+    if (category && category !== 'all') {
+
+      filter = {
+        ...filter,
+        category: { $regex: category, $options: 'i' }
+      }
+
+      if (searchFilter["$or"]) {
+        searchFilter["$or"] = [
+          ...searchFilter["$or"],
+          { category: { $regex: category, $options: 'i' } }
+        ]
+      }
+    }
+
 
     // Get total count
     const totalItems = await db
