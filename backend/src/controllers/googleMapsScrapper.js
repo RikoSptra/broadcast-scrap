@@ -55,7 +55,7 @@ exports.getAllGoogleScrapData = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const db = getDB();
-    
+
     // Build search query if search parameter exists
     const searchQuery = req.query.search;
     const searchFilter = searchQuery ? {
@@ -96,6 +96,7 @@ exports.getAllGoogleScrapData = async (req, res) => {
       address: contact.address || '',
       latitude: contact.latitude || '',
       longitude: contact.longitude || '',
+      category: contact.category || '',
     }));
 
     const totalPages = Math.ceil(totalItems / limit);
@@ -112,10 +113,10 @@ exports.getAllGoogleScrapData = async (req, res) => {
     });
   } catch (error) {
     console.error("Error getting contacts:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Terjadi kesalahan server",
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -170,10 +171,12 @@ async function fetchAll({ q, hl = "id", gl = "id", targetCount = 100 }) {
 
   for (const [queryIndex, currentQuery] of queryVariations.entries()) {
     console.log(
-      `\n--- PENCARIAN ${queryIndex + 1}/${
-        queryVariations.length
+      `\n--- PENCARIAN ${queryIndex + 1}/${queryVariations.length
       }: "${currentQuery}" ---`
     );
+
+    let searchTextQuery = currentQuery.split(":")[0];
+    let categoryQuery = currentQuery.split(":")[1];
 
     let results = [];
     let token = null;
@@ -183,7 +186,7 @@ async function fetchAll({ q, hl = "id", gl = "id", targetCount = 100 }) {
       const params = {
         engine: "google_maps",
         type: "search",
-        q: currentQuery, // menggunakan currentQuery untuk variasi
+        q: searchTextQuery, // menggunakan searchTextQuery untuk variasi
         hl,
         gl,
         num: 20, // maksimal hasil per halaman (default 20, maksimal 20 untuk Google Maps)
@@ -199,8 +202,14 @@ async function fetchAll({ q, hl = "id", gl = "id", targetCount = 100 }) {
         const key = p.data_id || p.place_id || `${p.title}::${p.address}`;
         if (!seen.has(key)) {
           seen.add(key);
-          results.push(p);
-          allResults.push(p);
+          results.push({
+            ...p,
+            category: categoryQuery || "",
+          });
+          allResults.push({
+            ...p,
+            category: categoryQuery || "",
+          });
         }
       }
 

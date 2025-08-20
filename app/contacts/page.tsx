@@ -24,6 +24,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -43,6 +50,7 @@ import {
   googleMapsScrapper,
   getAllGoogleScrapData,
 } from "@/app/actions/scrapper";
+import { getAllCategory } from "@/app/actions/category";
 import { useLoadingSpinner } from "@/components/LoadingSpinner";
 
 interface Contact {
@@ -57,14 +65,26 @@ interface Contact {
   status?: string;
   source?: string;
   broadcastSource?: string;
+  category?: string;
+}
+
+interface Category {
+  name: string;
 }
 
 function AllContacts() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [searchQueries, setSearchQueries] = useState<string[]>([]);
+  interface QueryItem {
+    search: string;
+    category: string;
+  }
+
+  const [searchQueries, setSearchQueries] = useState<QueryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const { showLoading, hideLoading } = useLoadingSpinner();
 
   // Tambahkan state untuk pagination
@@ -74,8 +94,11 @@ function AllContacts() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
+    loadAllCategory();
+  }, []);
+  useEffect(() => {
     loadData();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, selectedCategory]);
 
   // Hapus filteredContacts karena filter akan dilakukan di server
   // const filteredContacts = contacts.filter((contact) => {
@@ -95,6 +118,7 @@ function AllContacts() {
         page: currentPage,
         limit: itemsPerPage,
         search: searchTerm,
+        category: selectedCategory,
       });
 
       // Transform data to match Contact interface
@@ -107,12 +131,26 @@ function AllContacts() {
         website: item.website,
         address: item.address,
         coordinate: `${item.latitude},${item.longitude}`,
+        category: item.category,
       }));
 
       setContacts(transformedData);
       setTotalPages(response.pagination.totalPages);
       setTotalItems(response.pagination.totalItems);
       setItemsPerPage(response.pagination.itemsPerPage);
+    } catch (error) {
+      // toast.error("Gagal memuat data broadcast");
+    } finally {
+      hideLoading();
+    }
+  };
+
+  const loadAllCategory = async () => {
+    try {
+      showLoading();
+      const response = await getAllCategory();
+
+      setCategories(response);
     } catch (error) {
       // toast.error("Gagal memuat data broadcast");
     } finally {
@@ -132,15 +170,22 @@ function AllContacts() {
   };
 
   const handleAddQuery = () => {
-    const lengthQueries = [...searchQueries, ""];
-    if (lengthQueries.length <= 5) {
-      setSearchQueries([...searchQueries, ""]);
+    if (searchQueries.length < 5) {
+      setSearchQueries([...searchQueries, { search: "", category: "all" }]);
     }
   };
 
-  const handleQueryChange = (index: number, value: string) => {
+  const handleQueryChange = (
+    index: number,
+    field: "search" | "category",
+    value: string
+  ) => {
     const newQueries = [...searchQueries];
-    newQueries[index] = value;
+    newQueries[index] = {
+      search: field === "search" ? value : newQueries[index]?.search || "",
+      category:
+        field === "category" ? value : newQueries[index]?.category || "",
+    };
     setSearchQueries(newQueries);
   };
 
@@ -153,7 +198,9 @@ function AllContacts() {
     e.preventDefault();
     try {
       setIsLoading(true);
-      const queriesText = searchQueries.join(",");
+      const queriesText = searchQueries
+        .map((q) => `${q.search}${q.category ? `:${q.category}` : ""}`)
+        .join(",");
       const response = await googleMapsScrapper({ searchQuery: queriesText });
 
       loadData();
@@ -243,11 +290,40 @@ function AllContacts() {
                             <div className="flex-1">
                               <Input
                                 placeholder="Kata kunci pencarian ex: Cafe di Surabaya"
-                                value={query}
+                                value={query.search}
                                 onChange={(e) =>
-                                  handleQueryChange(index, e.target.value)
+                                  handleQueryChange(
+                                    index,
+                                    "search",
+                                    e.target.value
+                                  )
                                 }
                               />
+                            </div>
+                            <div className="w-[200px]">
+                              <Select
+                                value={query.category}
+                                onValueChange={(value) =>
+                                  handleQueryChange(index, "category", value)
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Pilih Kategori" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">
+                                    Semua Kategori
+                                  </SelectItem>
+                                  {categories.map((category) => (
+                                    <SelectItem
+                                      key={category.name}
+                                      value={category.name}
+                                    >
+                                      {category.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                             <Button
                               variant="outline"
@@ -274,7 +350,7 @@ function AllContacts() {
                       <Button
                         onClick={handleSubmitQueries}
                         disabled={
-                          searchQueries.filter((q) => q.trim() !== "")
+                          searchQueries.filter((q) => q.search.trim() !== "")
                             .length === 0
                         }
                         className="bg-green-600 hover:bg-green-700"
@@ -363,6 +439,24 @@ function AllContacts() {
                   />
                 </div>
               </div>
+              <div className="w-full md:w-[200px]">
+                <Select
+                  value={selectedCategory}
+                  onValueChange={setSelectedCategory}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Kategori</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.name} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {/* <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Filter Status" />
@@ -416,6 +510,7 @@ function AllContacts() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nama</TableHead>
+                    <TableHead>Kategori</TableHead>
                     <TableHead>Nomor Telepon</TableHead>
                     <TableHead>Alamat</TableHead>
                     <TableHead>Rating</TableHead>
@@ -430,6 +525,9 @@ function AllContacts() {
                     <TableRow key={index}>
                       <TableCell className="font-medium">
                         {contact.name}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {contact?.category || "all"}
                       </TableCell>
                       <TableCell>{contact.phone}</TableCell>
                       <TableCell>{contact.address}</TableCell>

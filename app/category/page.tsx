@@ -81,17 +81,6 @@ function CategoryPage() {
     category.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddCategory = () => {
-    if (newCategoryName.trim()) {
-      const newCategory = {
-        _id: (categories.length + 1).toString(),
-        name: newCategoryName.trim(),
-      };
-      setCategories([...categories, newCategory]);
-      setNewCategoryName("");
-      setIsDialogOpen(false);
-    }
-  };
 
   const submitEditCategory = async (e: React.FormEvent) => {
     e.preventDefault();

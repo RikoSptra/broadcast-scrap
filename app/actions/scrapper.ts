@@ -50,6 +50,7 @@ interface PaginationParams {
   page?: number;
   limit?: number;
   search?: string;
+  category?: string;
 }
 
 interface PaginationResponse {
@@ -72,6 +73,7 @@ export const getAllGoogleScrapData = async (
   if (params?.page) searchParams.append("page", params.page.toString());
   if (params?.limit) searchParams.append("limit", params.limit.toString());
   if (params?.search) searchParams.append("search", params.search);
+  if (params?.category) searchParams.append("category", params.category);
 
   const { data } = await api.get(
     `/googleMapsScrapper?${searchParams.toString()}`,
